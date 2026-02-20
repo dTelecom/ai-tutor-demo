@@ -30,6 +30,33 @@ Built with:
 | `LLM_MODEL` | `openai/gpt-4.1-mini` | OpenRouter model ID |
 | `CARTESIA_VOICE_ID` | `a0e99841-...` | Cartesia voice ID |
 
+## Deploy to a server (Docker + SSL)
+
+Requires a VPS with Docker installed and a domain pointing to it.
+
+```bash
+# 1. Clone & configure
+git clone https://github.com/dTelecom/ai-tutor-demo.git
+cd ai-tutor-demo
+cp .env.example .env
+# Fill in your API keys in .env
+
+# 2. Set your domain in nginx.conf
+sed -i 's/YOUR_DOMAIN/yourdomain.com/g' nginx.conf
+
+# 3. Get SSL certificate
+# Temporarily comment out the HTTPS server block in nginx.conf, then:
+docker compose up -d nginx
+docker compose run --rm certbot certonly --webroot -w /var/www/certbot -d yourdomain.com
+# Uncomment the HTTPS server block back
+
+# 4. Start everything
+docker compose up -d
+
+# 5. Auto-renew SSL (add to crontab -e)
+# 0 3 * * 1 cd /path/to/ai-tutor-demo && docker compose run --rm certbot renew && docker compose exec nginx nginx -s reload
+```
+
 ## Run locally
 
 ```bash
