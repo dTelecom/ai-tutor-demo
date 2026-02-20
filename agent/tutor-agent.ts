@@ -197,6 +197,7 @@ async function main() {
       greeted = true;
       console.log('Client ready — starting greeting');
       console.log(`Greeting student: "${greeting}"`);
+      publish('status', { status: 'thinking' });
       startTimer();
       agent.say(greeting);
     }
