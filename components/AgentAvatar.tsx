@@ -2,7 +2,7 @@
 
 import type { Participant } from "@dtelecom/livekit-client";
 
-export type AgentStatus = "waiting" | "idle" | "listening" | "thinking" | "speaking";
+export type AgentStatus = "waiting" | "preparing" | "idle" | "listening" | "thinking" | "speaking";
 
 interface AgentAvatarProps {
   participant: Participant | undefined;
@@ -14,6 +14,7 @@ export default function AgentAvatar({ participant, status }: AgentAvatarProps) {
 
   const statusText: Record<AgentStatus, string> = {
     waiting: "Waiting for tutor to join...",
+    preparing: "Preparing...",
     idle: "Ready",
     listening: "Listening...",
     thinking: "Thinking...",
@@ -32,8 +33,8 @@ export default function AgentAvatar({ participant, status }: AgentAvatarProps) {
           </>
         )}
 
-        {/* Thinking pulse */}
-        {displayStatus === "thinking" && (
+        {/* Thinking / preparing pulse */}
+        {(displayStatus === "thinking" || displayStatus === "preparing") && (
           <div className="absolute h-32 w-32 animate-pulse rounded-full bg-amber-500/15" />
         )}
 
@@ -47,7 +48,7 @@ export default function AgentAvatar({ participant, status }: AgentAvatarProps) {
           className={`relative flex h-32 w-32 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-5xl transition-all duration-300 ${
             displayStatus === "speaking"
               ? "scale-110 shadow-[0_0_40px_rgba(99,102,241,0.5)]"
-              : displayStatus === "thinking"
+              : displayStatus === "thinking" || displayStatus === "preparing"
                 ? "shadow-[0_0_25px_rgba(245,158,11,0.3)]"
                 : displayStatus === "listening"
                   ? "shadow-[0_0_25px_rgba(16,185,129,0.3)]"
@@ -66,7 +67,7 @@ export default function AgentAvatar({ participant, status }: AgentAvatarProps) {
           className={`text-sm ${
             displayStatus === "speaking"
               ? "text-blue-400"
-              : displayStatus === "thinking"
+              : displayStatus === "thinking" || displayStatus === "preparing"
                 ? "text-amber-400"
                 : displayStatus === "listening"
                   ? "text-emerald-400"

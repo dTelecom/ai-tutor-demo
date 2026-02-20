@@ -39,7 +39,7 @@ export default function TutorSession({ roomName, lessonId }: TutorSessionProps) 
 
   const [entries, setEntries] = useState<TranscriptEntry[]>([]);
   const [interimText, setInterimText] = useState<string | null>(null);
-  const [agentStatus, setAgentStatus] = useState<AgentStatus>("idle");
+  const [agentStatus, setAgentStatus] = useState<AgentStatus>("preparing");
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [lessonResult, setLessonResult] = useState<LessonResult | null>(null);
 
@@ -55,7 +55,7 @@ export default function TutorSession({ roomName, lessonId }: TutorSessionProps) 
 
         if (topic === "status") {
           const s = msg.status as string;
-          if (s === "idle" || s === "listening" || s === "thinking" || s === "speaking") {
+          if (s === "idle" || s === "preparing" || s === "listening" || s === "thinking" || s === "speaking") {
             setAgentStatus(s);
           }
           return;
