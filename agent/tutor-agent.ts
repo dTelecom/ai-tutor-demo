@@ -66,6 +66,10 @@ async function main() {
       voiceId: '6ccbfb76-1fc6-48f7-b71d-91ac6298247b', // Tessa
     }),
     instructions,
+    memory: {
+      enabled: true,
+      dbPath: process.env.MEMORY_DB_PATH || './data/memory.db',
+    },
   });
 
   // ── Data channel helpers ──────────────────────────────────────────────────

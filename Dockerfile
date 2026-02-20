@@ -8,8 +8,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # ── Install dependencies ─────────────────────────────────────────────────────
-COPY package.json package-lock.json ./
-RUN npm ci --ignore-scripts
+COPY package.json ./
+RUN npm install --legacy-peer-deps
 
 # ── Copy source + build Next.js ──────────────────────────────────────────────
 COPY . .

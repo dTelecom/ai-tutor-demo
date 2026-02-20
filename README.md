@@ -11,7 +11,7 @@ Built with:
 
 ## Deploy to Railway
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/template/new?repository=https%3A%2F%2Fgithub.com%2FdTelecom%2Fai-tutor-demo&envs=API_KEY%2CAPI_SECRET%2CDEEOGRAM_API_KEY%2COPENROUTER_API_KEY%2CCARTESIA_API_KEY&optionalEnvs=LLM_MODEL%2CCARTESIA_VOICE_ID)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/y2xtQc?referralCode=DaZ4Xt)
 
 ### Required environment variables
 
