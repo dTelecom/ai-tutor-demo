@@ -51,11 +51,16 @@ function buildInstructions(base: string, ttsProvider: string, language: string):
   if (ttsProvider !== 'deepgram') return base;
 
   const langCode = language; // 'es' or 'ja'
-  return base + `\n\n# Language Tags (required for TTS routing)
-Wrap every non-English sentence in SSML lang tags. English sentences need no tag.
-- Good: Great job! <lang xml:lang="${langCode}">Ahora repite: buenos días.</lang>
-- Bad: Great job! Ahora repite: buenos días. (missing tag on non-English)
-Without the tag, non-English text will be spoken with the English voice.`;
+  return base + `\n\n# Language Tags (CRITICAL — required for TTS routing)
+You MUST wrap ALL non-English text in SSML lang tags — every word, even single words like "Hola" embedded in English sentences. English text needs no tag. Without the tag, non-English text will be mispronounced by the English voice.
+
+Examples:
+- CORRECT: Great job! Now say <lang xml:lang="${langCode}">Hola.</lang>
+- CORRECT: <lang xml:lang="${langCode}">¡Hola!</lang> I'm your tutor. Let's practice <lang xml:lang="${langCode}">buenos días.</lang>
+- WRONG: Great job! Now say Hola. (missing tag — "Hola" will sound English)
+- WRONG: ¡Hola! I'm your tutor. (missing tag on "¡Hola!")
+
+Rule: if a word is not English, it MUST be inside <lang xml:lang="${langCode}">...</lang>.`;
 }
 
 async function main() {
