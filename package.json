@@ -1,0 +1,39 @@
+{
+  "name": "ai-tutor",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3001",
+    "build": "next build",
+    "start": "next start -p 3001",
+    "agent": "npx tsx agent/tutor-agent.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@dtelecom/agents-js": "^0.1.0",
+    "@dtelecom/components-react": "^1.0.46",
+    "@dtelecom/components-styles": "^1.0.27",
+    "@dtelecom/livekit-client": "^1.12.21",
+    "@dtelecom/server-sdk-js": "^3.2.0",
+    "@dtelecom/server-sdk-node": "^0.2.4",
+    "next": "16.1.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^5.1.4",
+    "jsdom": "^28.1.0",
+    "patch-package": "^8.0.0",
+    "tailwindcss": "^4",
+    "tsx": "^4.19.0",
+    "typescript": "^5",
+    "vitest": "^4.0.18"
+  }
+}
