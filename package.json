@@ -16,10 +16,9 @@
     "@dtelecom/components-styles": "^1.0.27",
     "@dtelecom/livekit-client": "^1.12.21",
     "@dtelecom/server-sdk-js": "^3.2.0",
-    "@dtelecom/server-sdk-node": "^0.2.4",
     "next": "16.1.6",
-    "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

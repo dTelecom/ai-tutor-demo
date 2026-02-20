@@ -3,9 +3,8 @@ import { resolve } from "path";
 
 const nextConfig: NextConfig = {
   turbopack: {
-    root: resolve(__dirname),
+    root: resolve(import.meta.dirname),
   },
-  serverExternalPackages: ["@dtelecom/server-sdk-js"],
 };
 
 export default nextConfig;
