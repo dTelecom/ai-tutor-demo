@@ -11,7 +11,8 @@
  *   API_SECRET              — dTelecom API secret
  *   DEEPGRAM_API_KEY
  *   OPENROUTER_API_KEY
- *   CARTESIA_API_KEY
+ *   CARTESIA_API_KEY          — required when TTS_PROVIDER=cartesia
+ *   TTS_PROVIDER              — 'deepgram' (default) or 'cartesia'
  *   LLM_MODEL               — OpenRouter model (default: openai/gpt-4.1-mini)
  *
  * Run manually:
@@ -19,19 +20,53 @@
  */
 
 import { VoiceAgent } from '@dtelecom/agents-js';
-import { DeepgramSTT, OpenRouterLLM, CartesiaTTS } from '@dtelecom/agents-js/providers';
+import { DeepgramSTT, OpenRouterLLM, CartesiaTTS, DeepgramTTS } from '@dtelecom/agents-js/providers';
+import type { TTSPlugin } from '@dtelecom/agents-js';
 
 const PASS_MARKER = /\[PASS\]/i;
 const FAIL_MARKER = /\[FAIL\]/i;
 
+function createTTS(language: string): TTSPlugin {
+  const provider = process.env.TTS_PROVIDER || 'deepgram';
+
+  if (provider === 'cartesia') {
+    return new CartesiaTTS({
+      apiKey: process.env.CARTESIA_API_KEY!,
+      voiceId: process.env.CARTESIA_VOICE_ID || '6ccbfb76-1fc6-48f7-b71d-91ac6298247b',
+    });
+  }
+
+  // Deepgram multi-language: pick models based on lesson language
+  const ttsModels: Record<string, string> = language === 'ja'
+    ? { en: 'aura-2-thalia-en', ja: 'aura-2-izanami-ja' }
+    : { en: 'aura-2-thalia-en', es: 'aura-2-celeste-es' };
+
+  return new DeepgramTTS({
+    apiKey: process.env.DEEPGRAM_API_KEY!,
+    model: ttsModels,
+  });
+}
+
+function buildInstructions(base: string, ttsProvider: string, language: string): string {
+  if (ttsProvider !== 'deepgram') return base;
+
+  const langCode = language; // 'es' or 'ja'
+  return base + `\n\n# Language Tags (required for TTS routing)
+Wrap every non-English sentence in SSML lang tags. English sentences need no tag.
+- Good: Great job! <lang xml:lang="${langCode}">Ahora repite: buenos días.</lang>
+- Bad: Great job! Ahora repite: buenos días. (missing tag on non-English)
+Without the tag, non-English text will be spoken with the English voice.`;
+}
+
 async function main() {
   const room = process.env.AGENT_ROOM;
   const language = process.env.AGENT_LANGUAGE || 'es';
-  const instructions = process.env.AGENT_SYSTEM_PROMPT;
+  const baseInstructions = process.env.AGENT_SYSTEM_PROMPT;
   const greeting = process.env.AGENT_GREETING;
   const apiKey = process.env.API_KEY;
   const apiSecret = process.env.API_SECRET;
   const lessonDuration = parseInt(process.env.AGENT_LESSON_DURATION || '900', 10);
+  const ttsProvider = process.env.TTS_PROVIDER || 'deepgram';
 
   if (!room) {
     console.error('AGENT_ROOM is required');
@@ -41,7 +76,7 @@ async function main() {
     console.error('API_KEY and API_SECRET are required');
     process.exit(1);
   }
-  if (!instructions) {
+  if (!baseInstructions) {
     console.error('AGENT_SYSTEM_PROMPT is required');
     process.exit(1);
   }
@@ -49,6 +84,8 @@ async function main() {
     console.error('AGENT_GREETING is required');
     process.exit(1);
   }
+
+  const instructions = buildInstructions(baseInstructions, ttsProvider, language);
 
   const agent = new VoiceAgent({
     stt: new DeepgramSTT({
@@ -61,10 +98,7 @@ async function main() {
       model: process.env.LLM_MODEL || 'openai/gpt-4.1-mini',
       providerRouting: { sort: 'latency' },
     }),
-    tts: new CartesiaTTS({
-      apiKey: process.env.CARTESIA_API_KEY!,
-      voiceId: '6ccbfb76-1fc6-48f7-b71d-91ac6298247b', // Tessa
-    }),
+    tts: createTTS(language),
     instructions,
     memory: {
       enabled: true,
