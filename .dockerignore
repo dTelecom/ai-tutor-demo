@@ -1,0 +1,9 @@
+node_modules
+.next
+.env
+.env.local
+.git
+*.md
+audio-dump
+data
+.DS_Store
