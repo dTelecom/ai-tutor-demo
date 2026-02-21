@@ -45,7 +45,6 @@ function createTTS(language: string): TTSPlugin {
     apiKey: process.env.DEEPGRAM_API_KEY!,
     model: ttsModels,
     openRouterApiKey: process.env.OPENROUTER_API_KEY!,
-    tagModel: 'openai/gpt-4o-mini',
   });
 }
 
