@@ -44,23 +44,9 @@ function createTTS(language: string): TTSPlugin {
   return new DeepgramTTS({
     apiKey: process.env.DEEPGRAM_API_KEY!,
     model: ttsModels,
+    openRouterApiKey: process.env.OPENROUTER_API_KEY!,
+    tagModel: 'openai/gpt-4o-mini',
   });
-}
-
-function buildInstructions(base: string, ttsProvider: string, language: string): string {
-  if (ttsProvider !== 'deepgram') return base;
-
-  const langCode = language; // 'es' or 'ja'
-  return base + `\n\n# Language Tags (CRITICAL — required for TTS routing)
-You MUST wrap ALL non-English text in SSML lang tags — every word, even single words like "Hola" embedded in English sentences. English text needs no tag. Without the tag, non-English text will be mispronounced by the English voice.
-
-Examples:
-- CORRECT: Great job! Now say <lang xml:lang="${langCode}">Hola.</lang>
-- CORRECT: <lang xml:lang="${langCode}">¡Hola!</lang> I'm your tutor. Let's practice <lang xml:lang="${langCode}">buenos días.</lang>
-- WRONG: Great job! Now say Hola. (missing tag — "Hola" will sound English)
-- WRONG: ¡Hola! I'm your tutor. (missing tag on "¡Hola!")
-
-Rule: if a word is not English, it MUST be inside <lang xml:lang="${langCode}">...</lang>.`;
 }
 
 async function main() {
@@ -71,7 +57,6 @@ async function main() {
   const apiKey = process.env.API_KEY;
   const apiSecret = process.env.API_SECRET;
   const lessonDuration = parseInt(process.env.AGENT_LESSON_DURATION || '900', 10);
-  const ttsProvider = process.env.TTS_PROVIDER || 'deepgram';
 
   if (!room) {
     console.error('AGENT_ROOM is required');
@@ -90,8 +75,6 @@ async function main() {
     process.exit(1);
   }
 
-  const instructions = buildInstructions(baseInstructions, ttsProvider, language);
-
   const agent = new VoiceAgent({
     stt: new DeepgramSTT({
       apiKey: process.env.DEEPGRAM_API_KEY!,
@@ -104,7 +87,7 @@ async function main() {
       providerRouting: { sort: 'latency' },
     }),
     tts: createTTS(language),
-    instructions,
+    instructions: baseInstructions,
     memory: {
       enabled: true,
       dbPath: process.env.MEMORY_DB_PATH || './data/memory.db',
