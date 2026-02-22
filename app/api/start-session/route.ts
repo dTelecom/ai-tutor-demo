@@ -32,7 +32,7 @@ process.on("exit", cleanupAgents);
 
 export async function POST(req: NextRequest) {
   try {
-    const { lessonId, studentName } = await req.json();
+    const { lessonId, studentName, userId } = await req.json();
 
     if (!lessonId || !studentName) {
       return NextResponse.json(
@@ -105,6 +105,7 @@ export async function POST(req: NextRequest) {
           AGENT_SYSTEM_PROMPT: systemPrompt,
           AGENT_GREETING: lesson.greeting,
           AGENT_LESSON_DURATION: String(lesson.durationMin * 60),
+          AGENT_USER_ID: userId || "",
           DEBUG: process.env.DEBUG || "@dtelecom/agents*",
           DUMP_AUDIO: process.env.DUMP_AUDIO || "",
         },

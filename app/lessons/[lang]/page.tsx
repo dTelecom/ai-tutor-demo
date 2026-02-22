@@ -3,7 +3,7 @@
 import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getLanguage, getLessonsForLanguage } from "@/lib/languages";
-import { isLessonUnlocked, isLessonPassed, getSavedStudentName, saveStudentName } from "@/lib/progress";
+import { isLessonUnlocked, isLessonPassed, getSavedStudentName, saveStudentName, getUserId } from "@/lib/progress";
 import LessonCard from "@/components/LessonCard";
 import { startSession } from "@/lib/api";
 
@@ -35,7 +35,8 @@ export default function LessonsPage({
     saveStudentName(lang, name);
 
     try {
-      const { token, wsUrl, roomName } = await startSession(lessonId, name);
+      const userId = getUserId(lang);
+      const { token, wsUrl, roomName } = await startSession(lessonId, name, userId);
       sessionStorage.setItem(
         `tutor:${roomName}`,
         JSON.stringify({ token, wsUrl, lessonId }),

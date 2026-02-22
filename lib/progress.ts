@@ -54,3 +54,14 @@ export function saveStudentName(languageId: string, name: string): void {
   progress.studentName = name;
   saveProgress(languageId, progress);
 }
+
+/** Return a stable userId for this language, creating one if needed. */
+export function getUserId(languageId: string): string {
+  const progress = getProgress(languageId);
+  if (progress.userId) return progress.userId;
+
+  const id = crypto.randomUUID();
+  progress.userId = id;
+  saveProgress(languageId, progress);
+  return id;
+}

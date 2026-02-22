@@ -47,6 +47,7 @@ export interface LessonResultData {
 export interface LessonProgress {
   passedLessons: number[];
   studentName: string;
+  userId?: string;
 }
 
 // ─── Session ─────────────────────────────────────────────────────────────────

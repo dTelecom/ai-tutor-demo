@@ -13,12 +13,12 @@ describe("startSession", () => {
       json: () => Promise.resolve(mockResponse),
     });
 
-    const result = await startSession("es-beginner-1", "Alice");
+    const result = await startSession("es-beginner-1", "Alice", "user-uuid-123");
 
     expect(fetch).toHaveBeenCalledWith("/api/start-session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lessonId: "es-beginner-1", studentName: "Alice" }),
+      body: JSON.stringify({ lessonId: "es-beginner-1", studentName: "Alice", userId: "user-uuid-123" }),
     });
     expect(result).toEqual(mockResponse);
   });
@@ -29,7 +29,7 @@ describe("startSession", () => {
       json: () => Promise.resolve({ error: "bad request" }),
     });
 
-    await expect(startSession("es-beginner-1", "")).rejects.toThrow("bad request");
+    await expect(startSession("es-beginner-1", "", "uid")).rejects.toThrow("bad request");
   });
 
   it("throws generic message when error response has no body", async () => {
@@ -38,6 +38,6 @@ describe("startSession", () => {
       json: () => Promise.reject(new Error("parse error")),
     });
 
-    await expect(startSession("es-beginner-1", "")).rejects.toThrow("Request failed");
+    await expect(startSession("es-beginner-1", "", "uid")).rejects.toThrow("Request failed");
   });
 });

@@ -89,7 +89,7 @@ async function main() {
     }),
     llm: new OpenRouterLLM({
       apiKey: process.env.OPENROUTER_API_KEY!,
-      model: process.env.LLM_MODEL || 'openai/gpt-4o-mini',
+      model: process.env.LLM_MODEL || 'openai/gpt-4.1-mini',
       providerRouting: { sort: 'latency' },
       responseFormat: {
         type: 'json_schema',
@@ -143,6 +143,7 @@ WRONG — "buenas tardes" mispronounced by English voice:
     memory: {
       enabled: true,
       dbPath: process.env.MEMORY_DB_PATH || './data/memory.db',
+      scope: process.env.AGENT_USER_ID || undefined,
     },
   });
 

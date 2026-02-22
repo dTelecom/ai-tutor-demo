@@ -3,11 +3,12 @@ import type { StartSessionResponse } from "./types";
 export async function startSession(
   lessonId: string,
   studentName: string,
+  userId: string,
 ): Promise<StartSessionResponse> {
   const res = await fetch("/api/start-session", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ lessonId, studentName }),
+    body: JSON.stringify({ lessonId, studentName, userId }),
   });
 
   if (!res.ok) {
