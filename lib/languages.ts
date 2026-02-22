@@ -49,7 +49,7 @@ export const lessons: Lesson[] = [
       "Polite phrases: mucho gusto, encantado/a",
       "Numbers 1-5: uno, dos, tres, cuatro, cinco",
     ],
-    greeting: "Hola! I'm Tessa, your Spanish tutor. Welcome to your first lesson — today we'll learn greetings and how to introduce yourself!",
+    greeting: "Hi! I'm Tessa, your Spanish tutor. Welcome to your first lesson — today we'll learn greetings and how to introduce yourself!",
     promptFile: "es-beginner-1.md",
   },
   {
@@ -66,7 +66,7 @@ export const lessons: Lesson[] = [
       "Asking prices: ¿cuánto cuesta?",
       "Numbers 6-10: seis, siete, ocho, nueve, diez",
     ],
-    greeting: "Hola! Welcome back! Today we're going to a Spanish café — you'll learn how to order food and drinks.",
+    greeting: "Hi! Welcome back! Today we're going to a Spanish café — you'll learn how to order food and drinks.",
     promptFile: "es-beginner-2.md",
   },
   {
@@ -83,7 +83,7 @@ export const lessons: Lesson[] = [
       "Transportation: necesito un taxi, el hotel",
       "Asking for help: perdón, ¿puede ayudarme?",
     ],
-    greeting: "Hola! Great to see you again! Today we'll learn how to find your way around — asking for directions in Spanish.",
+    greeting: "Hi! Great to see you again! Today we'll learn how to find your way around — asking for directions in Spanish.",
     promptFile: "es-beginner-3.md",
   },
 
@@ -102,7 +102,7 @@ export const lessons: Lesson[] = [
       "Meeting someone: hajimemashite, yoroshiku onegaishimasu",
       "Basic responses: hai, iie, arigatou",
     ],
-    greeting: "Konnichiwa! I'm Tessa, your Japanese tutor. Today we'll learn basic greetings and how to introduce yourself in Japanese!",
+    greeting: "Hi! I'm Tessa, your Japanese tutor. Today we'll learn basic greetings and how to introduce yourself in Japanese!",
     promptFile: "ja-beginner-1.md",
   },
   {
@@ -119,7 +119,7 @@ export const lessons: Lesson[] = [
       "Asking price: ikura desu ka?",
       "Numbers 1-10: ichi through juu",
     ],
-    greeting: "Konnichiwa! Welcome back! Today we're visiting a Japanese restaurant — you'll learn how to order and ask about the menu.",
+    greeting: "Hi! Welcome back! Today we're visiting a Japanese restaurant — you'll learn how to order and ask about the menu.",
     promptFile: "ja-beginner-2.md",
   },
   {
@@ -136,7 +136,7 @@ export const lessons: Lesson[] = [
       "Location: doko, koko, soko, asoko",
       "Basic time: ima nanji desu ka?",
     ],
-    greeting: "Konnichiwa! So glad you're back! Today we'll learn everyday phrases you'll need in Japan — things like saying you don't understand and asking for directions.",
+    greeting: "Hi! So glad you're back! Today we'll learn everyday phrases you'll need in Japan — things like saying you don't understand and asking for directions.",
     promptFile: "ja-beginner-3.md",
   },
 ];

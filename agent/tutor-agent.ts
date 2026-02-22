@@ -22,6 +22,7 @@
 import { VoiceAgent } from '@dtelecom/agents-js';
 import { DeepgramSTT, OpenRouterLLM, CartesiaTTS, DeepgramTTS } from '@dtelecom/agents-js/providers';
 import type { TTSPlugin } from '@dtelecom/agents-js';
+import { LangDetectTTS } from './lang-detect-tts';
 
 const PASS_MARKER = /\[PASS\]/i;
 const FAIL_MARKER = /\[FAIL\]/i;
@@ -41,11 +42,14 @@ function createTTS(language: string): TTSPlugin {
     ? { en: 'aura-2-thalia-en', ja: 'aura-2-izanami-ja' }
     : { en: 'aura-2-thalia-en', es: 'aura-2-celeste-es' };
 
-  return new DeepgramTTS({
+  const inner = new DeepgramTTS({
     apiKey: process.env.DEEPGRAM_API_KEY!,
     model: ttsModels,
-    openRouterApiKey: process.env.OPENROUTER_API_KEY!,
   });
+
+  // Wrap with language detection to catch foreign words the LLM missed tagging
+  const targetLangs = language === 'ja' ? ['ja'] : ['es'];
+  return new LangDetectTTS(inner, targetLangs);
 }
 
 async function main() {
@@ -74,6 +78,9 @@ async function main() {
     process.exit(1);
   }
 
+  // Build language enum from TTS model map
+  const langEnum = language === 'ja' ? ['en', 'ja'] : ['en', 'es'];
+
   const agent = new VoiceAgent({
     stt: new DeepgramSTT({
       apiKey: process.env.DEEPGRAM_API_KEY!,
@@ -82,11 +89,57 @@ async function main() {
     }),
     llm: new OpenRouterLLM({
       apiKey: process.env.OPENROUTER_API_KEY!,
-      model: process.env.LLM_MODEL || 'openai/gpt-4.1-mini',
+      model: process.env.LLM_MODEL || 'openai/gpt-4o-mini',
       providerRouting: { sort: 'latency' },
+      responseFormat: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'language_segments',
+          strict: true,
+          schema: {
+            type: 'object',
+            properties: {
+              segments: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    lang: { type: 'string', enum: langEnum },
+                    text: { type: 'string' },
+                  },
+                  required: ['lang', 'text'],
+                  additionalProperties: false,
+                },
+              },
+            },
+            required: ['segments'],
+            additionalProperties: false,
+          },
+        },
+      },
     }),
     tts: createTTS(language),
-    instructions: baseInstructions,
+    instructions: baseInstructions + `\n\nIMPORTANT — Voice routing format:
+Your response MUST be a JSON object with a "segments" array. Each segment has "lang" and "text".
+Each segment is spoken by a DIFFERENT VOICE — "${langEnum[0]}" = English voice, "${langEnum[1]}" = native ${language === 'ja' ? 'Japanese' : 'Spanish'} voice.
+
+CRITICAL: A ${language === 'ja' ? 'Japanese' : 'Spanish'} word in an "${langEnum[0]}" segment will be MISPRONOUNCED by the English voice. Every ${language === 'ja' ? 'Japanese' : 'Spanish'} word MUST be in its own "${langEnum[1]}" segment so it is pronounced correctly.
+
+Rules:
+- ALWAYS start with an "${langEnum[0]}" segment.
+- "${langEnum[0]}" segments MUST contain ONLY English words. NEVER put ${language === 'ja' ? 'Japanese' : 'Spanish'} words inside an "${langEnum[0]}" segment.
+- Every ${language === 'ja' ? 'Japanese' : 'Spanish'} word or phrase MUST be in a "${langEnum[1]}" segment — even if it's just one word.
+- Keep "${langEnum[1]}" segments SHORT: just the word/phrase being taught.
+- ALWAYS explain the meaning in English BEFORE or AFTER the "${langEnum[1]}" segment.
+- Do NOT echo back what the student just said in "${langEnum[1]}" — acknowledge in English instead.
+- NEVER return an empty segments array.
+
+CORRECT — "buenas tardes" pronounced by native voice:
+[{"lang":"en","text":"Now, in the afternoon, we say"},{"lang":"${langEnum[1]}","text":"buenas tardes"},{"lang":"en","text":"which means good afternoon. Can you try saying it?"}]
+
+WRONG — "buenas tardes" mispronounced by English voice:
+[{"lang":"en","text":"Now, in the afternoon, we say buenas tardes for good afternoon."}]`,
+    maxContextTokens: 16000,
     memory: {
       enabled: true,
       dbPath: process.env.MEMORY_DB_PATH || './data/memory.db',

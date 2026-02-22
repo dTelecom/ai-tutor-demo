@@ -11,7 +11,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@dtelecom/agents-js": "^0.1.8",
+    "@dtelecom/agents-js": "^0.1.11",
     "@dtelecom/components-react": "^1.0.46",
     "@dtelecom/components-styles": "^1.0.27",
     "@dtelecom/livekit-client": "^1.12.21",
@@ -19,15 +19,16 @@
     "@dtelecom/server-sdk-node": "^0.2.5",
     "@huggingface/transformers": "^3.8.1",
     "better-sqlite3": "^12.6.2",
+    "eld": "^2.0.2",
     "next": "16.1.6",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "sqlite-vec": "^0.1.7-alpha.2"
   },
   "optionalDependencies": {
-    "lightningcss-linux-x64-gnu": "^1.31.1",
+    "@img/sharp-linux-x64": "^0.34.5",
     "@tailwindcss/oxide-linux-x64-gnu": "^4.2.0",
-    "@img/sharp-linux-x64": "^0.34.5"
+    "lightningcss-linux-x64-gnu": "^1.31.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
