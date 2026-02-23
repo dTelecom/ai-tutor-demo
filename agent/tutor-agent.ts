@@ -89,7 +89,7 @@ async function main() {
     }),
     llm: new OpenRouterLLM({
       apiKey: process.env.OPENROUTER_API_KEY!,
-      model: process.env.LLM_MODEL || 'openai/gpt-4.1-mini',
+      model: process.env.LLM_MODEL || 'openai/gpt-4.1',
       providerRouting: { sort: 'latency' },
       responseFormat: {
         type: 'json_schema',
