@@ -36,7 +36,17 @@ export default function LessonsPage({
 
     try {
       const userId = getUserId(lang);
-      const { token, wsUrl, roomName } = await startSession(lessonId, name, userId);
+      let sttProvider: string | undefined;
+      let ttsProvider: string | undefined;
+      try {
+        const raw = localStorage.getItem("tutor:providers");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          sttProvider = parsed.stt;
+          ttsProvider = parsed.tts;
+        }
+      } catch {}
+      const { token, wsUrl, roomName } = await startSession(lessonId, name, userId, { sttProvider, ttsProvider });
       sessionStorage.setItem(
         `tutor:${roomName}`,
         JSON.stringify({ token, wsUrl, lessonId }),

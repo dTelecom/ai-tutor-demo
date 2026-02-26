@@ -32,7 +32,7 @@ process.on("exit", cleanupAgents);
 
 export async function POST(req: NextRequest) {
   try {
-    const { lessonId, studentName, userId } = await req.json();
+    const { lessonId, studentName, userId, sttProvider, ttsProvider } = await req.json();
 
     if (!lessonId || !studentName) {
       return NextResponse.json(
@@ -108,6 +108,8 @@ export async function POST(req: NextRequest) {
           AGENT_USER_ID: userId || "",
           DEBUG: process.env.DEBUG || "@dtelecom/agents*",
           DUMP_AUDIO: process.env.DUMP_AUDIO || "",
+          ...(sttProvider && { STT_PROVIDER: sttProvider }),
+          ...(ttsProvider && { TTS_PROVIDER: ttsProvider }),
         },
         stdio: ["ignore", "inherit", "inherit"],
       });
