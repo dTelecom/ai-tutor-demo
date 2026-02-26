@@ -12,7 +12,10 @@
  *   DEEPGRAM_API_KEY
  *   OPENROUTER_API_KEY
  *   CARTESIA_API_KEY          — required when TTS_PROVIDER=cartesia
- *   TTS_PROVIDER              — 'deepgram' (default) or 'cartesia'
+ *   STT_PROVIDER              — 'deepgram' (default) or 'dtelecom'
+ *   TTS_PROVIDER              — 'deepgram' (default) or 'cartesia' or 'dtelecom'
+ *   DTELECOM_STT_URL          — WebSocket URL for dTelecom STT (e.g. ws://192.168.1.100:8765)
+ *   DTELECOM_TTS_URL          — WebSocket URL for dTelecom TTS (e.g. ws://192.168.1.100:8766)
  *   LLM_MODEL               — OpenRouter model (default: openai/gpt-4.1-mini)
  *
  * Run manually:
@@ -20,12 +23,30 @@
  */
 
 import { VoiceAgent } from '@dtelecom/agents-js';
-import { DeepgramSTT, OpenRouterLLM, CartesiaTTS, DeepgramTTS } from '@dtelecom/agents-js/providers';
-import type { TTSPlugin } from '@dtelecom/agents-js';
+import { DeepgramSTT, OpenRouterLLM, CartesiaTTS, DeepgramTTS, DtelecomSTT, DtelecomTTS } from '@dtelecom/agents-js/providers';
+import type { STTPlugin, TTSPlugin } from '@dtelecom/agents-js';
 import { LangDetectTTS } from './lang-detect-tts';
 
 const PASS_MARKER = /\[PASS\]/i;
 const FAIL_MARKER = /\[FAIL\]/i;
+
+function createSTT(language: string): STTPlugin {
+  const provider = process.env.STT_PROVIDER || 'deepgram';
+
+  if (provider === 'dtelecom') {
+    // Start with Parakeet auto-detect (fast); tutor switches to Whisper+lang when expecting foreign speech
+    return new DtelecomSTT({
+      serverUrl: process.env.DTELECOM_STT_URL!,
+      language: 'auto',
+    });
+  }
+
+  return new DeepgramSTT({
+    apiKey: process.env.DEEPGRAM_API_KEY!,
+    language: 'multi',
+    endpointing: 100,
+  });
+}
 
 function createTTS(language: string): TTSPlugin {
   const provider = process.env.TTS_PROVIDER || 'deepgram';
@@ -35,6 +56,21 @@ function createTTS(language: string): TTSPlugin {
       apiKey: process.env.CARTESIA_API_KEY!,
       voiceId: process.env.CARTESIA_VOICE_ID || '6ccbfb76-1fc6-48f7-b71d-91ac6298247b',
     });
+  }
+
+  if (provider === 'dtelecom') {
+    const voices: Record<string, { voice: string; langCode: string }> = language === 'ja'
+      ? { en: { voice: 'af_heart', langCode: 'a' }, ja: { voice: 'jf_alpha', langCode: 'j' } }
+      : { en: { voice: 'af_heart', langCode: 'a' }, es: { voice: 'ef_dora', langCode: 'e' } };
+
+    const inner = new DtelecomTTS({
+      serverUrl: process.env.DTELECOM_TTS_URL!,
+      voices,
+    });
+
+    // Wrap with language detection to catch foreign words the LLM missed tagging
+    const targetLangs = language === 'ja' ? ['ja'] : ['es'];
+    return new LangDetectTTS(inner, targetLangs);
   }
 
   // Deepgram multi-language: pick models based on lesson language
@@ -82,11 +118,7 @@ async function main() {
   const langEnum = language === 'ja' ? ['en', 'ja'] : ['en', 'es'];
 
   const agent = new VoiceAgent({
-    stt: new DeepgramSTT({
-      apiKey: process.env.DEEPGRAM_API_KEY!,
-      language: 'multi',
-      endpointing: 100,
-    }),
+    stt: createSTT(language),
     llm: new OpenRouterLLM({
       apiKey: process.env.OPENROUTER_API_KEY!,
       model: process.env.LLM_MODEL || 'openai/gpt-4.1',
@@ -210,25 +242,43 @@ WRONG — "buenas tardes" mispronounced by English voice:
     console.log(`Lesson result: ${result.toUpperCase()}`);
   }
 
+  // ── STT language switching ────────────────────────────────────────────────
+  // When the agent speaks in the target language, switch STT to that language
+  // with forced Whisper so the student's repetition is transcribed accurately.
+  // After the student responds, switch back to Parakeet auto-detect (fast).
+
+  const targetLangTag = new RegExp(`<lang\\s+xml:lang="${language === 'ja' ? 'ja' : 'es'}"`);
+  let expectTargetLang = false;
+
   // ── Event handlers ────────────────────────────────────────────────────────
 
   agent.on('transcription', (result) => {
-    if (result.text.trim()) {
-      if (result.isFinal) {
-        console.log(`[Student] ${result.text}`);
-        publishTranscript(result.text, false);
-      } else {
-        publishTranscript(result.text, false, true);
+    if (result.isFinal && result.text.trim()) {
+      console.log(`[Student] ${result.text}`);
+      publishTranscript(result.text, false);
+
+      // After student speaks, switch back to Parakeet auto-detect
+      if (expectTargetLang) {
+        expectTargetLang = false;
+        agent.setSTTLanguage('auto');
       }
+    } else if (!result.isFinal) {
+      // Publish interim (including empty from VAD speech_start) so frontend shows activity
+      publishTranscript(result.text || '', false, true);
     }
   });
 
-  agent.on('sentence', (text) => {
+  agent.on('sentence', (text: string, rawText?: string) => {
     // Check for result markers before publishing transcript
     if (PASS_MARKER.test(text)) {
       publishResult('pass');
     } else if (FAIL_MARKER.test(text)) {
       publishResult('fail');
+    }
+
+    // Track if the agent spoke in the target language
+    if (rawText && targetLangTag.test(rawText)) {
+      expectTargetLang = true;
     }
 
     // Strip markers from displayed transcript
@@ -241,6 +291,12 @@ WRONG — "buenas tardes" mispronounced by English voice:
 
   agent.on('agentState', (state) => {
     publish('status', { status: state });
+
+    // When agent finishes speaking and target language was used, switch STT
+    if (state === 'idle' && expectTargetLang) {
+      const targetLang = language === 'ja' ? 'ja' : 'es';
+      agent.setSTTLanguage(targetLang, { forceWhisper: true });
+    }
   });
 
   agent.on('error', (err) => {
