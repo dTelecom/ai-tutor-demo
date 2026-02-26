@@ -16,7 +16,7 @@ export default function TranscriptPanel({ entries, interimText }: TranscriptPane
   }, [entries, interimText]);
 
   return (
-    <div className="flex min-h-0 w-96 flex-col border-l border-white/10 bg-white/[0.02]">
+    <div className="flex min-h-0 w-full flex-col border-t border-white/10 bg-white/[0.02] md:w-96 md:border-t-0 md:border-l">
       <div className="border-b border-white/10 px-4 py-3">
         <h3 className="font-medium text-white/80">Transcript</h3>
       </div>

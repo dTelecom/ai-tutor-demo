@@ -59,7 +59,7 @@ export default function LessonsPage({
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center p-8">
+    <main className="flex min-h-screen flex-col items-center p-4 sm:p-8">
       <div className="w-full max-w-2xl space-y-8">
         {/* Header */}
         <div className="flex items-center gap-4">

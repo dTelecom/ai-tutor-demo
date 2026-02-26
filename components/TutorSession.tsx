@@ -192,7 +192,7 @@ export default function TutorSession({ roomName, lessonId }: TutorSessionProps) 
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Top bar: lesson info + timer */}
       {lesson && (
-        <div className="flex items-center justify-between border-b border-white/10 px-6 py-3">
+        <div className="flex items-center justify-between border-b border-white/10 px-4 sm:px-6 py-3">
           <div className="min-w-0">
             <h2 className="text-sm font-semibold truncate">
               Lesson {lesson.number}: {lesson.title}
@@ -211,13 +211,13 @@ export default function TutorSession({ roomName, lessonId }: TutorSessionProps) 
         </div>
       )}
 
-      <div className="flex min-h-0 flex-1">
-        {/* Left: Agent avatar */}
-        <div className="flex flex-1 flex-col items-center justify-center">
+      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+        {/* Top on mobile / Left on desktop: Agent avatar */}
+        <div className="flex shrink-0 items-center justify-center py-6 md:flex-1 md:py-0">
           <AgentAvatar participant={agentParticipant} status={agentStatus} />
         </div>
 
-        {/* Right: Transcript */}
+        {/* Bottom on mobile / Right on desktop: Transcript */}
         <TranscriptPanel entries={entries} interimText={interimText} />
       </div>
 

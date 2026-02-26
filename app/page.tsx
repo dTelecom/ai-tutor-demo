@@ -79,7 +79,7 @@ export default function Home() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-8">
+    <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8">
       <div className="w-full max-w-2xl space-y-8">
         <div className="text-center">
           <h1 className="text-4xl font-bold">Language Tutor</h1>
@@ -88,7 +88,7 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="flex justify-center gap-6">
+        <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center sm:gap-6">
           <ProviderToggle
             label="STT"
             value={providers.stt}
