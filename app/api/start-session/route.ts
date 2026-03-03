@@ -122,27 +122,32 @@ export async function POST(req: NextRequest) {
 
       // Agent will use API_KEY/API_SECRET from process.env
     } else if (gateway) {
-      // x402 mode
+      // x402 mode — single bundled call for WebRTC + STT + TTS
       await ensureCredits();
 
-      const [studentToken, agentToken] = await Promise.all([
-        gateway.createWebRTCToken({
-          roomName,
-          participantIdentity: studentName,
-          durationMinutes: 16,
-        }),
-        gateway.createWebRTCToken({
-          roomName,
-          participantIdentity: "tutor-agent",
-          durationMinutes: 16,
-        }),
-      ]);
+      const clientIp = (req.headers.get("x-forwarded-for") ?? "127.0.0.1")
+        .split(",")[0]
+        .trim();
 
-      token = studentToken.token;
-      wsUrl = studentToken.wsUrl;
+      const bundle = await gateway.createAgentSession({
+        roomName,
+        participantIdentity: "tutor-agent",
+        clientIdentity: studentName,
+        clientIp,
+        durationMinutes: 16,
+        language: lesson.languageId,
+        ttsMaxCharacters: 50000,
+      });
 
-      agentEnv.AGENT_TOKEN = agentToken.token;
-      agentEnv.AGENT_WS_URL = agentToken.wsUrl;
+      token = bundle.webrtc.client.token;
+      wsUrl = bundle.webrtc.client.wsUrl;
+
+      agentEnv.AGENT_TOKEN = bundle.webrtc.agent.token;
+      agentEnv.AGENT_WS_URL = bundle.webrtc.agent.wsUrl;
+      agentEnv.AGENT_STT_URL = bundle.stt.serverUrl;
+      agentEnv.AGENT_STT_TOKEN = bundle.stt.token;
+      agentEnv.AGENT_TTS_URL = bundle.tts.serverUrl;
+      agentEnv.AGENT_TTS_TOKEN = bundle.tts.token;
     } else {
       return NextResponse.json(
         {
@@ -153,40 +158,43 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ── dTelecom STT/TTS — x402 only ────────────────────────────────────────
+    // ── dTelecom STT/TTS — x402 only (legacy mode needs separate sessions) ──
     const effectiveSTT = sttProvider || process.env.STT_PROVIDER || "deepgram";
     const effectiveTTS = ttsProvider || process.env.TTS_PROVIDER || "deepgram";
 
-    if (effectiveSTT === "dtelecom") {
-      if (!gateway) {
-        return NextResponse.json(
-          { error: "dTelecom STT requires WALLET_PRIVATE_KEY+GATEWAY_URL" },
-          { status: 500 },
-        );
+    if (apiKey && apiSecret) {
+      // Legacy WebRTC mode — STT/TTS still need x402 gateway
+      if (effectiveSTT === "dtelecom") {
+        if (!gateway) {
+          return NextResponse.json(
+            { error: "dTelecom STT requires WALLET_PRIVATE_KEY+GATEWAY_URL" },
+            { status: 500 },
+          );
+        }
+        await ensureCredits();
+        const sttSession = await gateway.createSTTSession({
+          durationMinutes: 16,
+          language: lesson.languageId,
+        });
+        agentEnv.AGENT_STT_URL = sttSession.serverUrl;
+        agentEnv.AGENT_STT_TOKEN = sttSession.token;
       }
-      await ensureCredits();
-      const sttSession = await gateway.createSTTSession({
-        durationMinutes: 16,
-        language: lesson.languageId,
-      });
-      agentEnv.AGENT_STT_URL = sttSession.serverUrl;
-      agentEnv.AGENT_STT_TOKEN = sttSession.token;
-    }
 
-    if (effectiveTTS === "dtelecom") {
-      if (!gateway) {
-        return NextResponse.json(
-          { error: "dTelecom TTS requires WALLET_PRIVATE_KEY+GATEWAY_URL" },
-          { status: 500 },
-        );
+      if (effectiveTTS === "dtelecom") {
+        if (!gateway) {
+          return NextResponse.json(
+            { error: "dTelecom TTS requires WALLET_PRIVATE_KEY+GATEWAY_URL" },
+            { status: 500 },
+          );
+        }
+        await ensureCredits();
+        const ttsSession = await gateway.createTTSSession({
+          maxCharacters: 50000,
+          language: lesson.languageId,
+        });
+        agentEnv.AGENT_TTS_URL = ttsSession.serverUrl;
+        agentEnv.AGENT_TTS_TOKEN = ttsSession.token;
       }
-      await ensureCredits();
-      const ttsSession = await gateway.createTTSSession({
-        maxCharacters: 50000,
-        language: lesson.languageId,
-      });
-      agentEnv.AGENT_TTS_URL = ttsSession.serverUrl;
-      agentEnv.AGENT_TTS_TOKEN = ttsSession.token;
     }
 
     // ── Spawn agent process ─────────────────────────────────────────────────
