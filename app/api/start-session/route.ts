@@ -21,8 +21,13 @@ const gateway =
 /** Auto top-up: buy $1 of credits when balance drops below 100k microcredits. */
 async function ensureCredits() {
   if (!gateway) return;
-  const acct = await gateway.getAccount();
-  if (BigInt(acct.availableBalance) < BigInt(100_000)) {
+  try {
+    const acct = await gateway.getAccount();
+    if (BigInt(acct.availableBalance) < BigInt(100_000)) {
+      await gateway.buyCredits({ amountUsd: 1.0 });
+    }
+  } catch {
+    // Account doesn't exist yet — first purchase creates it
     await gateway.buyCredits({ amountUsd: 1.0 });
   }
 }
