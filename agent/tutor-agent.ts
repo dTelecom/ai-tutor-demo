@@ -7,19 +7,16 @@
  *   AGENT_SYSTEM_PROMPT     — full system prompt for the LLM
  *   AGENT_GREETING          — greeting spoken when student joins
  *   AGENT_LESSON_DURATION   — lesson duration in seconds (default: 900)
- *   API_KEY                 — dTelecom API key
- *   API_SECRET              — dTelecom API secret
+ *   API_KEY / API_SECRET    — dTelecom WebRTC credentials (legacy mode)
+ *   AGENT_TOKEN / AGENT_WS_URL — x402 WebRTC token (x402 mode)
+ *   AGENT_STT_URL / AGENT_STT_TOKEN — x402 dTelecom STT session
+ *   AGENT_TTS_URL / AGENT_TTS_TOKEN — x402 dTelecom TTS session
  *   DEEPGRAM_API_KEY
  *   OPENROUTER_API_KEY
  *   CARTESIA_API_KEY          — required when TTS_PROVIDER=cartesia
  *   STT_PROVIDER              — 'deepgram' (default) or 'dtelecom'
  *   TTS_PROVIDER              — 'deepgram' (default) or 'cartesia' or 'dtelecom'
- *   DTELECOM_STT_URL          — WebSocket URL for dTelecom STT (e.g. ws://192.168.1.100:8765)
- *   DTELECOM_TTS_URL          — WebSocket URL for dTelecom TTS (e.g. ws://192.168.1.100:8766)
  *   LLM_MODEL               — OpenRouter model (default: openai/gpt-4.1-mini)
- *
- * Run manually:
- *   AGENT_ROOM=tutor-es-abc123 AGENT_LANGUAGE=es AGENT_SYSTEM_PROMPT="..." AGENT_GREETING="..." npx tsx agent/tutor-agent.ts
  */
 
 import { VoiceAgent } from '@dtelecom/agents-js';
@@ -34,9 +31,9 @@ function createSTT(language: string): STTPlugin {
   const provider = process.env.STT_PROVIDER || 'deepgram';
 
   if (provider === 'dtelecom') {
-    // Start with Parakeet auto-detect (fast); tutor switches to Whisper+lang when expecting foreign speech
     return new DtelecomSTT({
-      serverUrl: process.env.DTELECOM_STT_URL!,
+      serverUrl: process.env.AGENT_STT_URL!,
+      sessionKey: process.env.AGENT_STT_TOKEN!,
       language: 'auto',
     });
   }
@@ -64,7 +61,8 @@ function createTTS(language: string): TTSPlugin {
       : { en: { voice: 'af_heart', langCode: 'a' }, es: { voice: 'ef_dora', langCode: 'e' } };
 
     const inner = new DtelecomTTS({
-      serverUrl: process.env.DTELECOM_TTS_URL!,
+      serverUrl: process.env.AGENT_TTS_URL!,
+      sessionKey: process.env.AGENT_TTS_TOKEN!,
       voices,
     });
 
@@ -93,16 +91,20 @@ async function main() {
   const language = process.env.AGENT_LANGUAGE || 'es';
   const baseInstructions = process.env.AGENT_SYSTEM_PROMPT;
   const greeting = process.env.AGENT_GREETING;
+  const lessonDuration = parseInt(process.env.AGENT_LESSON_DURATION || '900', 10);
+
+  // WebRTC: x402 token or legacy API_KEY/API_SECRET
+  const agentToken = process.env.AGENT_TOKEN;
+  const agentWsUrl = process.env.AGENT_WS_URL;
   const apiKey = process.env.API_KEY;
   const apiSecret = process.env.API_SECRET;
-  const lessonDuration = parseInt(process.env.AGENT_LESSON_DURATION || '900', 10);
 
   if (!room) {
     console.error('AGENT_ROOM is required');
     process.exit(1);
   }
-  if (!apiKey || !apiSecret) {
-    console.error('API_KEY and API_SECRET are required');
+  if (!agentToken && (!apiKey || !apiSecret)) {
+    console.error('Either AGENT_TOKEN+AGENT_WS_URL or API_KEY+API_SECRET are required');
     process.exit(1);
   }
   if (!baseInstructions) {
@@ -313,13 +315,23 @@ WRONG — "buenas tardes" mispronounced by English voice:
 
   console.log(`Starting tutor agent for room "${room}" (language: ${language}, duration: ${lessonDuration}s)`);
 
-  await agent.start({
-    room,
-    apiKey,
-    apiSecret,
-    identity: 'tutor-agent',
-    name: 'AI Tutor',
-  });
+  if (agentToken && agentWsUrl) {
+    await agent.start({
+      room,
+      token: agentToken,
+      wsUrl: agentWsUrl,
+      identity: 'tutor-agent',
+      name: 'AI Tutor',
+    });
+  } else {
+    await agent.start({
+      room,
+      apiKey,
+      apiSecret,
+      identity: 'tutor-agent',
+      name: 'AI Tutor',
+    });
+  }
 
   // Wait for the client to confirm it has subscribed to the agent's audio track.
   // The client sends "client-ready" via data channel once TrackSubscribed fires
