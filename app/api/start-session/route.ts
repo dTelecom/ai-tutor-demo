@@ -1,5 +1,5 @@
 import { AccessToken } from "@dtelecom/server-sdk-js";
-import { DtelecomGateway } from "@dtelecom/x402-client";
+import { DtelecomGateway, InsufficientCreditsError } from "@dtelecom/x402-client";
 import { privateKeyToAccount } from "viem/accounts";
 import { NextRequest, NextResponse } from "next/server";
 import { spawn, ChildProcess } from "child_process";
@@ -18,12 +18,12 @@ const gateway =
       })
     : null;
 
-/** Auto top-up: buy $1 of credits when balance drops below 100k microcredits. */
+/** Auto top-up: buy $1 of credits when balance drops below 500k microcredits (~2 sessions). */
 async function ensureCredits() {
   if (!gateway) return;
   try {
     const acct = await gateway.getAccount();
-    if (BigInt(acct.availableBalance) < BigInt(100_000)) {
+    if (BigInt(acct.availableBalance) < BigInt(500_000)) {
       await gateway.buyCredits({ amountUsd: 1.0 });
     }
   } catch {
@@ -129,15 +129,31 @@ export async function POST(req: NextRequest) {
         .split(",")[0]
         .trim();
 
-      const bundle = await gateway.createAgentSession({
-        roomName,
-        participantIdentity: "tutor-agent",
-        clientIdentity: studentName,
-        clientIp,
-        durationMinutes: 16,
-        language: lesson.languageId,
-        ttsMaxCharacters: 50000,
-      });
+      let bundle;
+      try {
+        bundle = await gateway.createAgentSession({
+          roomName,
+          participantIdentity: "tutor-agent",
+          clientIdentity: studentName,
+          clientIp,
+          durationMinutes: 16,
+          language: lesson.languageId,
+        });
+      } catch (err) {
+        if (err instanceof InsufficientCreditsError) {
+          await gateway.buyCredits({ amountUsd: 1.0 });
+          bundle = await gateway.createAgentSession({
+            roomName,
+            participantIdentity: "tutor-agent",
+            clientIdentity: studentName,
+            clientIp,
+            durationMinutes: 16,
+            language: lesson.languageId,
+          });
+        } else {
+          throw err;
+        }
+      }
 
       token = bundle.webrtc.client.token;
       wsUrl = bundle.webrtc.client.wsUrl;
@@ -189,7 +205,7 @@ export async function POST(req: NextRequest) {
         }
         await ensureCredits();
         const ttsSession = await gateway.createTTSSession({
-          maxCharacters: 50000,
+          maxCharacters: 10000,
           language: lesson.languageId,
         });
         agentEnv.AGENT_TTS_URL = ttsSession.serverUrl;
