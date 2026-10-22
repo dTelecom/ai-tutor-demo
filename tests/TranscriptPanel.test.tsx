@@ -61,3 +61,17 @@ describe("TranscriptPanel", () => {
     expect(tutorLabel.className).toContain("text-blue-400");
   });
 });
+
+describe('Provisional transcript display', () => {
+  it('shows revisable listening text and replaces it with a final entry', () => {
+    const { rerender } = render(<TranscriptPanel entries={[]} interimText="Hello wor" />);
+    expect(screen.getByText('You · Listening…')).toBeInTheDocument();
+    expect(screen.getByText('Hello wor')).toBeInTheDocument();
+    rerender(<TranscriptPanel entries={[]} interimText="Hello world" finalizing />);
+    expect(screen.queryByText('Hello wor')).not.toBeInTheDocument();
+    expect(screen.getByText('You · Finishing…')).toBeInTheDocument();
+    rerender(<TranscriptPanel entries={[{ id: 'final', speaker: 'student', text: 'Hello world.', timestamp: 1 }]} />);
+    expect(screen.queryByText('You · Finishing…')).not.toBeInTheDocument();
+    expect(screen.getByText('Hello world.')).toBeInTheDocument();
+  });
+});

@@ -14,27 +14,31 @@
  *   DEEPGRAM_API_KEY
  *   OPENROUTER_API_KEY
  *   CARTESIA_API_KEY          — required when TTS_PROVIDER=cartesia
- *   STT_PROVIDER              — 'deepgram' (default) or 'dtelecom'
- *   TTS_PROVIDER              — 'deepgram' (default) or 'cartesia' or 'dtelecom'
- *   LLM_MODEL               — OpenRouter model (default: openai/gpt-4.1-mini)
+ *   STT_PROVIDER              — 'dtelecom' (default) or 'deepgram'
+ *   TTS_PROVIDER              — 'dtelecom' (default) or 'deepgram' or 'cartesia'
+ *   LLM_MODEL               — OpenRouter model (default: openai/gpt-6-luna)
  */
 
 import { VoiceAgent } from '@dtelecom/agents-js';
 import { DeepgramSTT, OpenRouterLLM, CartesiaTTS, DeepgramTTS, DtelecomSTT, DtelecomTTS } from '@dtelecom/agents-js/providers';
 import type { STTPlugin, TTSPlugin } from '@dtelecom/agents-js';
 import { LangDetectTTS } from './lang-detect-tts';
+import { TutorSSMLTTS } from './ssml-tts';
+import { tutorLLMSettings, tutorVoices } from './speech-config';
 
 const PASS_MARKER = /\[PASS\]/i;
 const FAIL_MARKER = /\[FAIL\]/i;
 
 function createSTT(language: string): STTPlugin {
-  const provider = process.env.STT_PROVIDER || 'deepgram';
+  const provider = process.env.STT_PROVIDER || 'dtelecom';
 
   if (provider === 'dtelecom') {
     return new DtelecomSTT({
       serverUrl: process.env.AGENT_STT_URL!,
       sessionKey: process.env.AGENT_STT_TOKEN!,
       language: 'auto',
+      partials: true,
+      smartTurn: true,
     });
   }
 
@@ -45,8 +49,8 @@ function createSTT(language: string): STTPlugin {
   });
 }
 
-function createTTS(language: string): TTSPlugin {
-  const provider = process.env.TTS_PROVIDER || 'deepgram';
+function createTTS(language: string, onTargetLanguage: () => void): TTSPlugin {
+  const provider = process.env.TTS_PROVIDER || 'dtelecom';
 
   if (provider === 'cartesia') {
     return new CartesiaTTS({
@@ -56,19 +60,14 @@ function createTTS(language: string): TTSPlugin {
   }
 
   if (provider === 'dtelecom') {
-    const voices: Record<string, { voice: string; langCode: string }> = language === 'ja'
-      ? { en: { voice: 'af_heart', langCode: 'a' }, ja: { voice: 'jf_alpha', langCode: 'j' } }
-      : { en: { voice: 'af_heart', langCode: 'a' }, es: { voice: 'ef_dora', langCode: 'e' } };
-
+    const targetLanguage = language === 'ja' ? 'ja' : 'es';
     const inner = new DtelecomTTS({
       serverUrl: process.env.AGENT_TTS_URL!,
       sessionKey: process.env.AGENT_TTS_TOKEN!,
-      voices,
+      voices: tutorVoices(targetLanguage),
     });
 
-    // Wrap with language detection to catch foreign words the LLM missed tagging
-    const targetLangs = language === 'ja' ? ['ja'] : ['es'];
-    return new LangDetectTTS(inner, targetLangs);
+    return new TutorSSMLTTS(inner, targetLanguage, onTargetLanguage);
   }
 
   // Deepgram multi-language: pick models based on lesson language
@@ -119,12 +118,13 @@ async function main() {
   // Build language enum from TTS model map
   const langEnum = language === 'ja' ? ['en', 'ja'] : ['en', 'es'];
 
+  let expectTargetLang = false;
+
   const agent = new VoiceAgent({
     stt: createSTT(language),
     llm: new OpenRouterLLM({
       apiKey: process.env.OPENROUTER_API_KEY!,
-      model: process.env.LLM_MODEL || 'openai/gpt-4.1',
-      providerRouting: { sort: 'latency' },
+      ...tutorLLMSettings(process.env.LLM_MODEL),
       responseFormat: {
         type: 'json_schema',
         json_schema: {
@@ -152,10 +152,10 @@ async function main() {
         },
       },
     }),
-    tts: createTTS(language),
+    tts: createTTS(language, () => { expectTargetLang = true; }),
     instructions: baseInstructions + `\n\nIMPORTANT — Voice routing format:
 Your response MUST be a JSON object with a "segments" array. Each segment has "lang" and "text".
-Each segment is spoken by a DIFFERENT VOICE — "${langEnum[0]}" = English voice, "${langEnum[1]}" = native ${language === 'ja' ? 'Japanese' : 'Spanish'} voice.
+Each segment uses its language pronunciation — "${langEnum[0]}" = English voice, "${langEnum[1]}" = native ${language === 'ja' ? 'Japanese' : 'Spanish'} voice.
 
 CRITICAL: A ${language === 'ja' ? 'Japanese' : 'Spanish'} word in an "${langEnum[0]}" segment will be MISPRONOUNCED by the English voice. Every ${language === 'ja' ? 'Japanese' : 'Spanish'} word MUST be in its own "${langEnum[1]}" segment so it is pronounced correctly.
 
@@ -187,11 +187,13 @@ WRONG — "buenas tardes" mispronounced by English voice:
     const agentRoom = agent.room;
     if (!agentRoom) return;
     const payload = new TextEncoder().encode(JSON.stringify(data));
-    agentRoom.localParticipant.publishData(payload, { topic });
+    void agentRoom.localParticipant.publishData(payload, { topic }).catch((error) => {
+      console.warn(`[Tutor] Could not publish ${topic}:`, error);
+    });
   }
 
-  function publishTranscript(text: string, isAgent: boolean, isInterim = false) {
-    publish('transcript', { text, isAgent, isInterim });
+  function publishTranscript(text: string, isAgent: boolean, isInterim = false, metadata: Record<string, unknown> = {}) {
+    publish('transcript', { text, isAgent, isInterim, ...metadata });
   }
 
   // ── Audio dump ────────────────────────────────────────────────────────────
@@ -250,24 +252,36 @@ WRONG — "buenas tardes" mispronounced by English voice:
   // After the student responds, switch back to Parakeet auto-detect (fast).
 
   const targetLangTag = new RegExp(`<lang\\s+xml:lang="${language === 'ja' ? 'ja' : 'es'}"`);
-  let expectTargetLang = false;
-
   // ── Event handlers ────────────────────────────────────────────────────────
 
   agent.on('transcription', (result) => {
     if (result.isFinal && result.text.trim()) {
       console.log(`[Student] ${result.text}`);
-      publishTranscript(result.text, false);
+      publishTranscript(result.text, false, false, { utteranceId: result.utteranceId, speaker: result.speaker });
 
       // After student speaks, switch back to Parakeet auto-detect
       if (expectTargetLang) {
         expectTargetLang = false;
         agent.setSTTLanguage('auto');
       }
-    } else if (!result.isFinal) {
+    } else if (!result.isFinal && !result.provisional) {
       // Publish interim (including empty from VAD speech_start) so frontend shows activity
       publishTranscript(result.text || '', false, true);
     }
+  });
+
+  agent.on('stt_ready', ({ language: sttLanguage, smartTurn, speaker }) => {
+    console.log(`[Tutor] STT ready: language=${sttLanguage}, smartTurn=${smartTurn ?? 'unconfirmed'}, speaker=${speaker}`);
+  });
+
+  agent.on('transcription_partial', ({ text, utteranceId, revision, speaker }) => {
+    console.log(`[Tutor] STT partial: speaker=${speaker}, utterance=${utteranceId}, revision=${revision}, text=${JSON.stringify(text)}`);
+    publishTranscript(text, false, true, { utteranceId, revision, speaker });
+  });
+
+  agent.on('partial_end', ({ utteranceId, reason, speaker }) => {
+    console.log(`[Tutor] STT partial end: speaker=${speaker}, utterance=${utteranceId}, reason=${reason}`);
+    publish('transcript', { kind: 'partial_end', utteranceId, reason, speaker });
   });
 
   agent.on('sentence', (text: string, rawText?: string) => {
@@ -313,6 +327,7 @@ WRONG — "buenas tardes" mispronounced by English voice:
 
   // ── Start agent ───────────────────────────────────────────────────────────
 
+  console.log(`[Tutor] LLM: ${tutorLLMSettings(process.env.LLM_MODEL).model}; TTS: ${process.env.TTS_PROVIDER || 'dtelecom'}${(process.env.TTS_PROVIDER || 'dtelecom') === 'dtelecom' ? '/supertonic F1 SSML' : ''}`);
   console.log(`Starting tutor agent for room "${room}" (language: ${language}, duration: ${lessonDuration}s)`);
 
   if (agentToken && agentWsUrl) {

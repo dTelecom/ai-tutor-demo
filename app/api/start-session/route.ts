@@ -175,8 +175,8 @@ export async function POST(req: NextRequest) {
     }
 
     // ── dTelecom STT/TTS — x402 only (legacy mode needs separate sessions) ──
-    const effectiveSTT = sttProvider || process.env.STT_PROVIDER || "deepgram";
-    const effectiveTTS = ttsProvider || process.env.TTS_PROVIDER || "deepgram";
+    const effectiveSTT = sttProvider || process.env.STT_PROVIDER || "dtelecom";
+    const effectiveTTS = ttsProvider || process.env.TTS_PROVIDER || "dtelecom";
 
     if (apiKey && apiSecret) {
       // Legacy WebRTC mode — STT/TTS still need x402 gateway

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useReducer } from "react";
 import {
   RoomAudioRenderer,
   useRemoteParticipants,
@@ -8,7 +8,8 @@ import {
 } from "@dtelecom/components-react";
 import { DataPacket_Kind, RoomEvent, Track } from "@dtelecom/livekit-client";
 import { useRouter } from "next/navigation";
-import type { TranscriptEntry, LessonResult } from "@/lib/types";
+import type { LessonResult } from "@/lib/types";
+import { initialTranscripts, receiveTranscript } from "@/lib/transcripts";
 import { getLesson } from "@/lib/languages";
 import { markLessonPassed } from "@/lib/progress";
 import AgentAvatar from "./AgentAvatar";
@@ -37,8 +38,7 @@ export default function TutorSession({ roomName, lessonId }: TutorSessionProps) 
 
   const lesson = getLesson(lessonId);
 
-  const [entries, setEntries] = useState<TranscriptEntry[]>([]);
-  const [interimText, setInterimText] = useState<string | null>(null);
+  const [transcripts, receive] = useReducer((state: typeof initialTranscripts, message: unknown) => receiveTranscript(state, message), initialTranscripts);
   const [agentStatus, setAgentStatus] = useState<AgentStatus>("preparing");
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [lessonResult, setLessonResult] = useState<LessonResult | null>(null);
@@ -48,7 +48,7 @@ export default function TutorSession({ roomName, lessonId }: TutorSessionProps) 
 
   const handleData = useCallback(
     (payload: Uint8Array, _participant?: unknown, _kind?: unknown, topic?: string) => {
-      if (!topic) return;
+      if (!topic || (_participant as { identity?: string } | undefined)?.identity !== "tutor-agent") return;
 
       try {
         const msg = JSON.parse(new TextDecoder().decode(payload));
@@ -73,22 +73,7 @@ export default function TutorSession({ roomName, lessonId }: TutorSessionProps) 
         }
 
         if (topic === "transcript") {
-          if (msg.isInterim) {
-            setInterimText(msg.text);
-            return;
-          }
-
-          if (!msg.isAgent) {
-            setInterimText(null);
-          }
-
-          const entry: TranscriptEntry = {
-            id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-            speaker: msg.isAgent ? "tutor" : "student",
-            text: msg.text,
-            timestamp: Date.now(),
-          };
-          setEntries((prev) => [...prev, entry]);
+          receive(msg);
         }
       } catch {
         // ignore malformed data
@@ -218,7 +203,7 @@ export default function TutorSession({ roomName, lessonId }: TutorSessionProps) 
         </div>
 
         {/* Bottom on mobile / Right on desktop: Transcript */}
-        <TranscriptPanel entries={entries} interimText={interimText} />
+        <TranscriptPanel entries={transcripts.entries} interimText={transcripts.draft?.text} finalizing={transcripts.draft?.finalizing} />
       </div>
 
       <SessionControls />

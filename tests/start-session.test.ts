@@ -80,6 +80,9 @@ describe("POST /api/start-session", () => {
     vi.clearAllMocks();
     process.env.API_KEY = "test-key";
     process.env.API_SECRET = "test-secret";
+    // Existing credentials-only tests exercise the explicitly selected legacy providers.
+    process.env.STT_PROVIDER = "deepgram";
+    process.env.TTS_PROVIDER = "deepgram";
   });
 
   it("returns 400 when lessonId is missing", async () => {
@@ -115,6 +118,15 @@ describe("POST /api/start-session", () => {
     const res = await POST(req as any);
 
     expect(res.status).toBe(500);
+  });
+
+  it("requires gateway credentials for the new default dTelecom speech providers", async () => {
+    delete process.env.STT_PROVIDER;
+    delete process.env.TTS_PROVIDER;
+    const res = await POST(makeRequest({ lessonId: "es-beginner-1", studentName: "Alice" }) as any);
+    expect(res.status).toBe(500);
+    expect((await res.json()).error).toContain("dTelecom STT requires");
+    expect(mockSpawn).not.toHaveBeenCalled();
   });
 
   it("creates token and spawns agent on success", async () => {

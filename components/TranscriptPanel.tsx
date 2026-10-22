@@ -6,9 +6,10 @@ import type { TranscriptEntry } from "@/lib/types";
 interface TranscriptPanelProps {
   entries: TranscriptEntry[];
   interimText?: string | null;
+  finalizing?: boolean;
 }
 
-export default function TranscriptPanel({ entries, interimText }: TranscriptPanelProps) {
+export default function TranscriptPanel({ entries, interimText, finalizing }: TranscriptPanelProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -35,7 +36,7 @@ export default function TranscriptPanel({ entries, interimText }: TranscriptPane
         ))}
         {interimText && (
           <div>
-            <span className="text-xs font-medium text-green-400/50">You</span>
+            <span className="text-xs font-medium text-green-400/50">You · {finalizing ? "Finishing…" : "Listening…"}</span>
             <p className="mt-0.5 text-sm italic text-white/40">{interimText}</p>
           </div>
         )}

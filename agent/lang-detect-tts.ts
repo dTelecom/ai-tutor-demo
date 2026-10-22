@@ -69,6 +69,14 @@ export class LangDetectTTS implements TTSPlugin {
     this.langSubset = [defaultLang, ...targetLangs];
   }
 
+  get sequential(): boolean | undefined {
+    return this.inner.sequential;
+  }
+
+  close(): void {
+    this.inner.close?.();
+  }
+
   get defaultLanguage(): string | undefined {
     return this.inner.defaultLanguage;
   }

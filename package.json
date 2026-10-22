@@ -8,16 +8,17 @@
     "start": "next start",
     "agent": "npx tsx agent/tutor-agent.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@dtelecom/agents-js": "^0.2.0",
+    "@dtelecom/agents-js": "0.5.0",
     "@dtelecom/components-react": "^1.0.46",
     "@dtelecom/components-styles": "^1.0.27",
     "@dtelecom/livekit-client": "^1.12.21",
     "@dtelecom/server-sdk-js": "^3.2.0",
-    "@dtelecom/server-sdk-node": "^0.2.5",
-    "@dtelecom/x402-client": "^0.1.2",
+    "@dtelecom/server-sdk-node": "0.2.6",
+    "@dtelecom/x402-client": "0.4.0",
     "@huggingface/transformers": "^3.8.1",
     "better-sqlite3": "^12.6.2",
     "eld": "^2.0.2",
@@ -35,6 +36,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/better-sqlite3": "^7.6.13",
