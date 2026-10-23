@@ -1,5 +1,7 @@
 # AI Tutor Demo
 
+The SDK versions pinned in this tested demo are application dependencies, not a claim to be npm latest. The tutor uses Supertonic, complete-document SSML through its adapter and provisional transcript display. Watermark remains independently opt-in. For separate translation/file transcription/WAV/vision/moderation APIs, see the [current gateway SDK](https://github.com/dTelecom/x402-client) and [API contracts](https://x402.dtelecom.org/docs.md).
+
 AI-powered language tutor built with [dTelecom](https://dtelecom.org) voice agents. Students join a real-time voice session and practice conversational skills with an AI tutor.
 
 Built with:
