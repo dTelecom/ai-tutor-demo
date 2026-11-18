@@ -8,6 +8,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # ── Install dependencies ─────────────────────────────────────────────────────
+# onnxruntime-node (via @huggingface/transformers, used for memory embeddings)
+# tries to download CUDA binaries on linux/x64. We run on CPU, and the download
+# 404s upstream, so skip it. The CPU binaries ship inside the npm package.
+ENV ONNXRUNTIME_NODE_INSTALL_CUDA=skip
 COPY package.json package-lock.json ./
 RUN npm ci --legacy-peer-deps
 
